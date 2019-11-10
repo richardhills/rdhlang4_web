@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>RDHLang</title>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+
+		<style>
+			.codeTextarea, .validationOutput, .executionOutput, .opcodeOutput {
+				resize: vertical;
+				width: 100%;
+				max-width: 800px;
+				min-height: 150px;
+				font-family: monospace;
+				padding: 1rem;
+				display: block;
+				margin-bottom: 1rem;
+			}
+			.executeButton {
+				margin-bottom: 1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<section class="section">
+			<div class="container">
+				<h1 class="title">RDHLang</h1>
+				<p class="subtitle">Welcome to <strong>RDHLang</strong>!</p>
+				<div>
+					<h2>Code</h2>
+					<textarea class="codeTextarea">
+function(Void => Integer) {
+  return 42;
+}</textarea>
+					<h2>Validation</h2>
+					<p class="validationSummary"></p>
+					<textarea class="validationOutput" readonly></textarea>
+					<h2>Code</h2>
+					<textarea class="opcodeOutput" readonly></textarea>
+					<h2>Output</h2>
+					<textarea class="executionOutput" readonly></textarea>
+				</div>
+			</div>
+		</section>
+		<script>
+			(function initialize() {
+				function handleCodeTextareaChanged(event) {
+					validate(event.target);
+				}
+
+				function validate(codeArea) {
+					var validationOutputArea = codeArea.parentElement.getElementsByClassName("validationOutput")[0];
+					var validationSummaryArea = codeArea.parentElement.getElementsByClassName("validationSummary")[0];
+					var opcodeOutputArea = codeArea.parentElement.getElementsByClassName("opcodeOutput")[0];
+					var resultsArea = codeArea.parentElement.getElementsByClassName("executionOutput")[0];
+
+					fetch("/validate/", {
+						method: 'post',
+						body: JSON.stringify({ code: codeArea.value }),
+						headers: {
+							'Accept': 'application/json',
+							'Content-Type': 'application/json'
+						},
+					}).then(function(response) {
+						response.text().then(function(data) {
+							var summary, summaryColor;
+							if (response.status !== 200) {
+								validationOutputArea.value = "Error";
+								summary = "Error " + response.status + " in validation: " + data;
+								summaryColor = "#f00";
+								opcodeOutputArea.value = "Fix errors for code";
+								resultsArea.value = "Fix errors to execute";
+							} else {
+								var json = JSON.parse(data);
+								var breakModes = Object.keys(json.break_modes);
+								if(breakModes.indexOf("exception") != -1) {
+									summary = "Application might fail";
+									summaryColor = "#f00";
+								} else {
+									summary = "Application will succeed";
+									summaryColor = "#0f0";
+								}
+								validationOutputArea.value = JSON.stringify(json.break_modes, null, '  ');
+								opcodeOutputArea.value = JSON.stringify(json.opcode, null, '  ');	
+								execute(codeArea);
+							}
+							validationSummaryArea.innerHTML = summary;
+							validationSummaryArea.style.color = summaryColor;
+						});
+					});
+				};
+
+				function execute(codeArea) {
+					var resultsArea = codeArea.parentElement.getElementsByClassName("executionOutput")[0];
+					fetch("/execute/", {
+						method: 'post',
+						body: JSON.stringify({ code: codeArea.value }),
+						headers: {
+							'Accept': 'application/json',
+							'Content-Type': 'application/json'
+						},
+					}).then(function(response) {
+						if (response.status !== 200) {
+							resultsArea.value = "Error " + response.status + " in execution - should never happen";
+							return;
+						}
+						response.json().then(function(data) {
+							if(data.mode === "return" || data.mode === "exit") {
+								resultsArea.value = "Normal exit: " + JSON.stringify(data.value);
+							} else if (data.mode === "exception") {
+								resultsArea.value = "Exception exit:\n" + JSON.stringify(data.value);
+							} else {
+								resultsArea.value = "Abnormal exit:\n" + JSON.stringify(data);
+							}
+						});
+					});
+				};
+
+				for(var codeTextarea of document.getElementsByClassName("codeTextarea")) {
+					codeTextarea.addEventListener("input", handleCodeTextareaChanged);
+					validate(codeTextarea);
+				}
+			})();
+		</script>
+	</body>
+</html>
