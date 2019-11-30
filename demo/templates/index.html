@@ -29,7 +29,7 @@
 				<h1 class="title">RDHLang</h1>
 				<p class="subtitle">Welcome to <strong>RDHLang</strong>!</p>
 				<div>
-					<h2>Code</h2>
+					<h2>Code<span id="running"> - Running...</span></h2>
 					<textarea class="codeTextarea">
 function(Void => Integer) {
   return 42;
@@ -50,20 +50,35 @@ function(Void => Integer) {
 					validateAndExecute(event.target);
 				}
 
+				var mostRecentRequest = null;
+
+				function displayProgress() {
+				  document.getElementById('running').style.visibility = mostRecentRequest == null ? "hidden" : "visible";
+				}
+
 				function validateAndExecute(codeArea) {
 					var validationOutputArea = codeArea.parentElement.getElementsByClassName("validationOutput")[0];
 					var validationSummaryArea = codeArea.parentElement.getElementsByClassName("validationSummary")[0];
 					var opcodeOutputArea = codeArea.parentElement.getElementsByClassName("opcodeOutput")[0];
 					var resultsArea = codeArea.parentElement.getElementsByClassName("executionOutput")[0];
 
-					fetch("/validate-and-execute/", {
+					var thisRequest = mostRecentRequest = fetch("/validate-and-execute/", {
 						method: 'post',
 						body: JSON.stringify({ code: codeArea.value }),
 						headers: {
 							'Accept': 'application/json',
 							'Content-Type': 'application/json'
 						},
-					}).then(function(response) {
+					});
+
+					displayProgress();
+
+					thisRequest.then(function(response) {
+						if(thisRequest !== mostRecentRequest) {
+							return;
+						}
+						mostRecentRequest = null;
+						displayProgress();
 						response.text().then(function(data) {
 							var summary, summaryColor;
 							if (response.status !== 200) {
