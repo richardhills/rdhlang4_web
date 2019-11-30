@@ -12,13 +12,13 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
-from exception_types import FatalException, PreparationException, \
+from rdhlang4.exception_types import FatalException, PreparationException, \
     InvalidApplicationException
-from executor.executor import PreparedFunction, BreakException, \
+from rdhlang4.executor.executor import PreparedFunction, BreakException, \
     enforce_application_break_mode_constraints, jump_to_function
-from parser.rdhparser import parse, prepare_code
-from parser.visitor import type_op, ParseError
-from utils import NO_VALUE
+from rdhlang4.parser.rdhparser import parse, prepare_code
+from rdhlang4.parser.visitor import type_op, ParseError
+from rdhlang4.utils import NO_VALUE
 
 
 class DemoView(TemplateView):
