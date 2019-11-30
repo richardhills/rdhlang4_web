@@ -47,16 +47,16 @@ function(Void => Integer) {
 		<script>
 			(function initialize() {
 				function handleCodeTextareaChanged(event) {
-					validate(event.target);
+					validateAndExecute(event.target);
 				}
 
-				function validate(codeArea) {
+				function validateAndExecute(codeArea) {
 					var validationOutputArea = codeArea.parentElement.getElementsByClassName("validationOutput")[0];
 					var validationSummaryArea = codeArea.parentElement.getElementsByClassName("validationSummary")[0];
 					var opcodeOutputArea = codeArea.parentElement.getElementsByClassName("opcodeOutput")[0];
 					var resultsArea = codeArea.parentElement.getElementsByClassName("executionOutput")[0];
 
-					fetch("/validate/", {
+					fetch("/validate-and-execute/", {
 						method: 'post',
 						body: JSON.stringify({ code: codeArea.value }),
 						headers: {
@@ -74,7 +74,7 @@ function(Void => Integer) {
 								resultsArea.value = "Fix errors to execute";
 							} else {
 								var json = JSON.parse(data);
-								var breakModes = Object.keys(json.break_modes);
+								var breakModes = Object.keys(json.validation.break_modes);
 								if(breakModes.indexOf("exception") != -1) {
 									summary = "Application might fail";
 									summaryColor = "#f00";
@@ -82,9 +82,16 @@ function(Void => Integer) {
 									summary = "Application will succeed";
 									summaryColor = "#0f0";
 								}
-								validationOutputArea.value = JSON.stringify(json.break_modes, null, '  ');
-								opcodeOutputArea.value = JSON.stringify(json.opcode, null, '  ');	
-								execute(codeArea);
+								validationOutputArea.value = JSON.stringify(json.validation.break_modes, null, '  ');
+								opcodeOutputArea.value = JSON.stringify(json.validation.opcode, null, '  ');
+
+								if(json.execution.mode === "return" || json.execution.mode === "exit") {
+									resultsArea.value = "Normal exit: " + JSON.stringify(json.execution.value);
+								} else if (json.execution.mode === "exception") {
+									resultsArea.value = "Exception exit:\n" + JSON.stringify(json.execution.value);
+								} else {
+									resultsArea.value = "Abnormal exit:\n" + JSON.stringify(json.execution);
+								}
 							}
 							validationSummaryArea.innerHTML = summary;
 							validationSummaryArea.style.color = summaryColor;
@@ -92,35 +99,9 @@ function(Void => Integer) {
 					});
 				};
 
-				function execute(codeArea) {
-					var resultsArea = codeArea.parentElement.getElementsByClassName("executionOutput")[0];
-					fetch("/execute/", {
-						method: 'post',
-						body: JSON.stringify({ code: codeArea.value }),
-						headers: {
-							'Accept': 'application/json',
-							'Content-Type': 'application/json'
-						},
-					}).then(function(response) {
-						if (response.status !== 200) {
-							resultsArea.value = "Error " + response.status + " in execution - should never happen";
-							return;
-						}
-						response.json().then(function(data) {
-							if(data.mode === "return" || data.mode === "exit") {
-								resultsArea.value = "Normal exit: " + JSON.stringify(data.value);
-							} else if (data.mode === "exception") {
-								resultsArea.value = "Exception exit:\n" + JSON.stringify(data.value);
-							} else {
-								resultsArea.value = "Abnormal exit:\n" + JSON.stringify(data);
-							}
-						});
-					});
-				};
-
 				for(var codeTextarea of document.getElementsByClassName("codeTextarea")) {
 					codeTextarea.addEventListener("input", handleCodeTextareaChanged);
-					validate(codeTextarea);
+					validateAndExecute(codeTextarea);
 				}
 			})();
 		</script>

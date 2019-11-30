@@ -16,12 +16,16 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 
-from demo.views import ExecutionView, ValidationView, DemoView
+from demo.views import ExecutionView, ValidationView, DemoView, \
+    ValidationAndExecuteView
 
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
+#    url(r'^admin/', admin.site.urls),
     url(r'^demo/', DemoView.as_view()),
+
+    url(r'^validate-and-execute/', ValidationAndExecuteView.as_view()),
+
     url(r'^validate/', ValidationView.as_view()),
     url(r'^execute/', ExecutionView.as_view()),
 ]

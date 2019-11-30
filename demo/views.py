@@ -50,6 +50,10 @@ class ExecutionResponseSerializer(Serializer):
     mode = CharField()
     value = JSONField()
 
+class ValidationAndExecutionResponseSerializer(Serializer):
+    validation = ValidationResponseSerializer()
+    execution = ExecutionResponseSerializer()
+
 class ExecutionResponseJSONEncoder(JSONEncoder):
     def default(self, value):
         if value == NO_VALUE:
@@ -92,6 +96,37 @@ class ExecutionView(GenericAPIView):
             return Response(data=ExecutionResponseSerializer(instance=bunchify({
                 "mode": b.mode,
                 "value": json.loads(json.dumps(b.value, cls=ExecutionResponseJSONEncoder))
+            })).data)
+        except FatalException as f:
+            print "FATAL ERROR"
+            print f
+            return Response(status=500)
+
+class ValidationAndExecuteView(GenericAPIView):
+    serializer_class = CodeSerializer
+
+    def post(self, request):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(True)
+            function = serializer.validated_data["code"]
+
+            jump_to_function(function, NO_VALUE)
+        except BreakException as b:
+            if b.value is NO_VALUE:
+                b.value = None
+
+            break_types = function.break_types
+
+            return Response(data=ValidationAndExecutionResponseSerializer(instance=bunchify({
+                "validation": {
+                    "break_modes": { m: t.to_dict() for m, t in break_types.items() },
+                    "opcode": function.data
+                },
+                "execution": {
+                    "mode": b.mode,
+                    "value": json.loads(json.dumps(b.value, cls=ExecutionResponseJSONEncoder))
+                }
             })).data)
         except FatalException as f:
             print "FATAL ERROR"
