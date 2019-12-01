@@ -22,6 +22,7 @@
 				margin-bottom: 1rem;
 			}
 		</style>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
 	</head>
 	<body>
 		<section class="section">
@@ -56,7 +57,7 @@ function(Void => Integer) {
 				  document.getElementById('running').style.visibility = mostRecentRequest == null ? "hidden" : "visible";
 				}
 
-				function validateAndExecute(codeArea) {
+				var validateAndExecute = _.debounce(function (codeArea) {
 					var validationOutputArea = codeArea.parentElement.getElementsByClassName("validationOutput")[0];
 					var validationSummaryArea = codeArea.parentElement.getElementsByClassName("validationSummary")[0];
 					var opcodeOutputArea = codeArea.parentElement.getElementsByClassName("opcodeOutput")[0];
@@ -112,7 +113,7 @@ function(Void => Integer) {
 							validationSummaryArea.style.color = summaryColor;
 						});
 					});
-				};
+				}, 500);
 
 				for(var codeTextarea of document.getElementsByClassName("codeTextarea")) {
 					codeTextarea.addEventListener("input", handleCodeTextareaChanged);
