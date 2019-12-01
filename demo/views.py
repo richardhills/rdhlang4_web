@@ -19,6 +19,7 @@ from rdhlang4.executor.executor import PreparedFunction, BreakException, \
 from rdhlang4.parser.rdhparser import parse, prepare_code
 from rdhlang4.parser.visitor import type_op, ParseError
 from rdhlang4.utils import NO_VALUE
+from demo.request_response_tracking import RequestResponseMixin
 
 
 class DemoView(TemplateView):
@@ -62,7 +63,7 @@ class ExecutionResponseJSONEncoder(JSONEncoder):
             return repr(PreparedFunction)
         return super(ExecutionResponseJSONEncoder, self).default(value)
 
-class ValidationView(GenericAPIView):
+class ValidationView(RequestResponseMixin, GenericAPIView):
     serializer_class = CodeSerializer
 
     def post(self, request):
@@ -80,7 +81,7 @@ class ValidationView(GenericAPIView):
         ).data)
 
 
-class ExecutionView(GenericAPIView):
+class ExecutionView(RequestResponseMixin, GenericAPIView):
     serializer_class = CodeSerializer
 
     def post(self, request):
@@ -102,7 +103,7 @@ class ExecutionView(GenericAPIView):
             print f
             return Response(status=500)
 
-class ValidationAndExecuteView(GenericAPIView):
+class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
     serializer_class = CodeSerializer
 
     def post(self, request):
