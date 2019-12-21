@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import json
 from json.encoder import JSONEncoder
 
-from bunch import bunchify
 from django.views.generic.base import TemplateView
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import JSONField, CharField, DictField
@@ -20,6 +19,7 @@ from rdhlang4.parser.rdhparser import parse, prepare_code
 from rdhlang4.parser.visitor import type_op, ParseError
 from rdhlang4.utils import NO_VALUE
 from demo.request_response_tracking import RequestResponseMixin
+from munch import munchify
 
 
 class DemoView(TemplateView):
@@ -94,13 +94,13 @@ class ExecutionView(RequestResponseMixin, GenericAPIView):
         except BreakException as b:
             if b.value is NO_VALUE:
                 b.value = None
-            return Response(data=ExecutionResponseSerializer(instance=bunchify({
+            return Response(data=ExecutionResponseSerializer(instance=munchify({
                 "mode": b.mode,
                 "value": json.loads(json.dumps(b.value, cls=ExecutionResponseJSONEncoder))
             })).data)
         except FatalException as f:
-            print "FATAL ERROR"
-            print f
+            print("FATAL ERROR")
+            print(f)
             return Response(status=500)
 
 class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
@@ -119,7 +119,7 @@ class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
 
             break_types = function.break_types
 
-            return Response(data=ValidationAndExecutionResponseSerializer(instance=bunchify({
+            return Response(data=ValidationAndExecutionResponseSerializer(instance=munchify({
                 "validation": {
                     "break_modes": { m: t.to_dict() for m, t in break_types.items() },
                     "opcode": function.data
@@ -130,6 +130,6 @@ class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
                 }
             })).data)
         except FatalException as f:
-            print "FATAL ERROR"
-            print f
+            print("FATAL ERROR")
+            print(f)
             return Response(status=500)
