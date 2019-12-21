@@ -32,7 +32,8 @@ class CodeSerializer(Serializer):
     def validate_code(self, code):
         try:
             code = prepare_code(code)
-            enforce_application_break_mode_constraints(code)
+            if isinstance(code, PreparedFunction):
+                enforce_application_break_mode_constraints(code)
             return code
         except ParseError as p:
             raise ValidationError("ParseError: {}".format(p.args), "parse-error")
@@ -44,7 +45,7 @@ class CodeSerializer(Serializer):
 
 class ValidationResponseSerializer(Serializer):
     break_modes = DictField(child=JSONField())
-    opcode = JSONField()
+    ast = JSONField()
 
 
 class ExecutionResponseSerializer(Serializer):
@@ -60,7 +61,7 @@ class ExecutionResponseJSONEncoder(JSONEncoder):
         if value == NO_VALUE:
             return None
         if isinstance(value, PreparedFunction):
-            return repr(PreparedFunction)
+            return value.data
         return super(ExecutionResponseJSONEncoder, self).default(value)
 
 class ValidationView(RequestResponseMixin, GenericAPIView):
@@ -80,56 +81,40 @@ class ValidationView(RequestResponseMixin, GenericAPIView):
             }
         ).data)
 
-
-class ExecutionView(RequestResponseMixin, GenericAPIView):
-    serializer_class = CodeSerializer
-
-    def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(True)
-        function = serializer.validated_data["code"]
-
-        try:
-            jump_to_function(function, NO_VALUE)
-        except BreakException as b:
-            if b.value is NO_VALUE:
-                b.value = None
-            return Response(data=ExecutionResponseSerializer(instance=munchify({
-                "mode": b.mode,
-                "value": json.loads(json.dumps(b.value, cls=ExecutionResponseJSONEncoder))
-            })).data)
-        except FatalException as f:
-            print("FATAL ERROR")
-            print(f)
-            return Response(status=500)
+def make_safe_for_json_serialization(data):
+    return json.loads(json.dumps(data, cls=ExecutionResponseJSONEncoder))
 
 class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
     serializer_class = CodeSerializer
 
     def post(self, request):
+        break_types = None
+        break_result = None
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(True)
-            function = serializer.validated_data["code"]
+            potential_function = serializer.validated_data["code"]
 
-            jump_to_function(function, NO_VALUE)
+            if isinstance(potential_function, PreparedFunction):
+                break_types = potential_function.break_types
+                jump_to_function(potential_function, NO_VALUE)
         except BreakException as b:
             if b.value is NO_VALUE:
                 b.value = None
 
-            break_types = function.break_types
-
-            return Response(data=ValidationAndExecutionResponseSerializer(instance=munchify({
-                "validation": {
-                    "break_modes": { m: t.to_dict() for m, t in break_types.items() },
-                    "opcode": function.data
-                },
-                "execution": {
-                    "mode": b.mode,
-                    "value": json.loads(json.dumps(b.value, cls=ExecutionResponseJSONEncoder))
-                }
-            })).data)
+            break_result = b
         except FatalException as f:
             print("FATAL ERROR")
             print(f)
             return Response(status=500)
+
+        return Response(data=ValidationAndExecutionResponseSerializer(instance=munchify({
+            "validation": {
+                "break_modes": { m: t.to_dict() for m, t in break_types.items() } if break_types else {},
+                "ast": make_safe_for_json_serialization(potential_function)
+            },
+            "execution": {
+                "mode": break_result.mode,
+                "value": make_safe_for_json_serialization(break_result.value)
+            } if break_result else None
+        })).data)

@@ -16,7 +16,7 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 
-from demo.views import ExecutionView, ValidationView, DemoView, \
+from demo.views import ValidationView, DemoView, \
     ValidationAndExecuteView
 
 
@@ -27,5 +27,4 @@ urlpatterns = [
     url(r'^validate-and-execute/', ValidationAndExecuteView.as_view()),
 
     url(r'^validate/', ValidationView.as_view()),
-    url(r'^execute/', ExecutionView.as_view()),
 ]

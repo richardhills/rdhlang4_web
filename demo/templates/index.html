@@ -99,14 +99,18 @@ function(Void => Integer) {
 									summaryColor = "#0f0";
 								}
 								validationOutputArea.value = JSON.stringify(json.validation.break_modes, null, '  ');
-								opcodeOutputArea.value = JSON.stringify(json.validation.opcode, null, '  ');
+								opcodeOutputArea.value = JSON.stringify(json.validation.ast, null, '  ');
 
-								if(json.execution.mode === "return" || json.execution.mode === "exit") {
-									resultsArea.value = "Normal exit: " + JSON.stringify(json.execution.value);
-								} else if (json.execution.mode === "exception") {
-									resultsArea.value = "Exception exit:\n" + JSON.stringify(json.execution.value);
+								if(json.execution) {
+									if(json.execution.mode === "return" || json.execution.mode === "exit") {
+										resultsArea.value = "Normal exit: " + JSON.stringify(json.execution.value);
+									} else if (json.execution.mode === "exception") {
+										resultsArea.value = "Exception exit:\n" + JSON.stringify(json.execution.value);
+									} else {
+										resultsArea.value = "Abnormal exit:\n" + JSON.stringify(json.execution);
+									}
 								} else {
-									resultsArea.value = "Abnormal exit:\n" + JSON.stringify(json.execution);
+									resultsArea.value = "No Execution";
 								}
 							}
 							validationSummaryArea.innerHTML = summary;
