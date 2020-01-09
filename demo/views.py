@@ -3,23 +3,25 @@ from __future__ import unicode_literals
 
 import json
 from json.encoder import JSONEncoder
+import traceback
 
 from django.views.generic.base import TemplateView
+from munch import munchify
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import JSONField, CharField, DictField
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
+from demo.request_response_tracking import RequestResponseMixin
 from rdhlang4.exception_types import FatalException, PreparationException, \
     InvalidApplicationException
 from rdhlang4.executor.executor import PreparedFunction, BreakException, \
     enforce_application_break_mode_constraints, jump_to_function
 from rdhlang4.parser.rdhparser import parse, prepare_code
 from rdhlang4.parser.visitor import type_op, ParseError
+from rdhlang4.type_system.values import List, Object
 from rdhlang4.utils import NO_VALUE
-from demo.request_response_tracking import RequestResponseMixin
-from munch import munchify
 
 
 class DemoView(TemplateView):
@@ -31,10 +33,7 @@ class CodeSerializer(Serializer):
 
     def validate_code(self, code):
         try:
-            code = prepare_code(code)
-            if isinstance(code, PreparedFunction):
-                enforce_application_break_mode_constraints(code)
-            return code
+            return prepare_code(code)
         except ParseError as p:
             raise ValidationError("ParseError: {}".format(p.args), "parse-error")
         except PreparationException as p:
@@ -62,6 +61,10 @@ class ExecutionResponseJSONEncoder(JSONEncoder):
             return None
         if isinstance(value, PreparedFunction):
             return value.data
+        if isinstance(value, List):
+            return value.wrapped
+        if isinstance(value, Object):
+            return dict(value)
         return super(ExecutionResponseJSONEncoder, self).default(value)
 
 class ValidationView(RequestResponseMixin, GenericAPIView):
@@ -105,6 +108,7 @@ class ValidationAndExecuteView(RequestResponseMixin, GenericAPIView):
             break_result = b
         except FatalException as f:
             print("FATAL ERROR")
+            traceback.print_exc()
             print(f)
             return Response(status=500)
 
